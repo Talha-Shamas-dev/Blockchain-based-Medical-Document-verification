@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # ── Hyperledger Fabric Network ──────────────────────────────
+  fabric-network:
+    image: hyperledger/fabric-network:latest
+    # In production, you'd mount your existing test-network here
+    # For now, we use the existing local network
+    network_mode: host
+    restart: unless-stopped
+    # This runs the test-network from your local machine
+    # You'll need to run it separately for now
+
+  # ── Redis ─────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: medchain-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # ── Backend ────────────────────────────────────────────────────
+  backend:
+    build: .
+    container_name: medchain-backend
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - FABRIC_ORG_PATH=/app/organizations
+    volumes:
+      - ./medchain.db:/app/medchain.db
+      - ${HOME}/fabric-new/test-network/organizations:/app/organizations
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # ── Frontend ───────────────────────────────────────────────────
+  frontend:
+    build: ../medical-frontend
+    container_name: medchain-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  redis_data:

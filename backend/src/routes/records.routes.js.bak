@@ -1,0 +1,140 @@
+/**
+ * records.routes.js — Updated for YOUR medical chaincode
+ *
+ * Your chaincode CreateRecord args:
+ *   recordID, patientID, fileCID, fileHash, doctorName, description
+ *
+ * Note: Your network uses LevelDB (not CouchDB) by default.
+ * GetRecordsByPatient uses a rich query — if it fails with LevelDB,
+ * the endpoint returns [] gracefully and logs a warning.
+ * Re-deploy with:  ./network.sh up -s couchdb   to enable rich queries.
+ */
+
+import express from 'express'
+import { v4 as uuidv4 } from 'uuid'
+import { authenticate, authorize } from '../middleware/auth.js'
+import { validate, rules }        from '../middleware/validate.js'
+import { readSlowDown }           from '../middleware/rateLimiter.js'
+import fabricService from '../services/fabric.service.js'
+import cacheService  from '../services/cache.service.js'
+import { enqueueCreateRecord } from '../services/queue.service.js'
+import { config } from '../config/index.js'
+
+const router = express.Router()
+
+router.use(authenticate)
+
+// ── POST /api/records ─────────────────────────────────────────────────────────
+// Async — enqueue to BullMQ, return jobId immediately.
+// Result arrives via WebSocket (tx:confirmed event).
+router.post('/',
+  authorize('doctor', 'lab'),
+  rules.patientID(), rules.fileCID(), rules.fileHash(),
+  rules.doctorName(), rules.description(),
+  validate,
+  async (req, res, next) => {
+    try {
+      const { patientID, fileCID, fileHash, doctorName, description } = req.body
+      const recordID = 'REC-' + uuidv4().replace(/-/g, '').slice(0, 12).toUpperCase()
+
+      const jobId = await enqueueCreateRecord({
+        recordID, patientID, fileCID, fileHash, doctorName, description,
+        userId: req.user.username,
+      })
+
+      res.status(202).json({
+        success: true,
+        message: 'Record creation queued — result via WebSocket (tx:confirmed)',
+        recordID, jobId,
+      })
+    } catch (err) { next(err) }
+  }
+)
+
+// ── POST /api/records/sync ────────────────────────────────────────────────────
+// Synchronous — waits for Fabric consensus (~1-3s on local test-network).
+// Use this during development or when caller needs immediate confirmation.
+router.post('/sync',
+  authorize('doctor', 'lab'),
+  rules.patientID(), rules.fileCID(), rules.fileHash(),
+  rules.doctorName(), rules.description(),
+  validate,
+  async (req, res, next) => {
+    try {
+      const { patientID, fileCID, fileHash, doctorName, description } = req.body
+      const recordID = 'REC-' + uuidv4().replace(/-/g, '').slice(0, 12).toUpperCase()
+
+      const result = await fabricService.createRecord({
+        recordID, patientID, fileCID, fileHash, doctorName, description,
+      })
+
+      // Invalidate patient cache so next read picks up the new record
+      await cacheService.invalidatePatient(patientID)
+
+      res.status(201).json({ success: true, ...result })
+    } catch (err) { next(err) }
+  }
+)
+
+// ── GET /api/records/patient?patientID=P001 ───────────────────────────────────
+// Uses GetRecordsByPatient chaincode function (CouchDB rich query).
+// Falls back to empty array on LevelDB networks (logs a warning).
+router.get('/patient',
+  readSlowDown,
+  rules.patientIDQuery(), validate,
+  async (req, res, next) => {
+    try {
+      const { patientID } = req.query
+      const cacheKey = cacheService.key.patientRecords(patientID)
+      const records  = await cacheService.getOrFetch(
+        cacheKey,
+        config.redis.ttl.patientRecords,
+        () => fabricService.getRecordsByPatient(patientID)
+      )
+      res.json({ success: true, count: records.length, records })
+    } catch (err) { next(err) }
+  }
+)
+
+// ── GET /api/records/:recordID ────────────────────────────────────────────────
+// Fast read — evaluateTransaction, no on-chain trace, Redis cached.
+// Returns: { recordID, patientID, fileCID, fileHash, doctorName,
+//            description, timestamp, accessList, revoked }
+router.get('/:recordID',
+  readSlowDown,
+  rules.recordID(), validate,
+  async (req, res, next) => {
+    try {
+      const { recordID } = req.params
+      const cacheKey = cacheService.key.record(recordID)
+      const record   = await cacheService.getOrFetch(
+        cacheKey,
+        config.redis.ttl.record,
+        () => fabricService.getRecord(recordID)
+      )
+      res.json({ success: true, record })
+    } catch (err) { next(err) }
+  }
+)
+
+// ── GET /api/records/:recordID/history ───────────────────────────────────────
+// Full on-chain version history (GetRecordHistory).
+// Every CreateRecord / GrantAccess / RevokeAccess call appears here.
+router.get('/:recordID/history',
+  readSlowDown,
+  rules.recordID(), validate,
+  async (req, res, next) => {
+    try {
+      const { recordID } = req.params
+      const cacheKey = cacheService.key.history(recordID)
+      const history  = await cacheService.getOrFetch(
+        cacheKey,
+        config.redis.ttl.history,
+        () => fabricService.getRecordHistory(recordID)
+      )
+      res.json({ success: true, count: history.length, history })
+    } catch (err) { next(err) }
+  }
+)
+
+export default router
