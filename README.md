@@ -1,85 +1,68 @@
-# MedChain Frontend v2.0 — Updated for YOUR medical chaincode
+# Running the test network
 
-Four complete role dashboards — **Patient**, **Doctor**, **Hospital/Lab**, **Insurance Company** —
-wired to match your actual deployed chaincode field names exactly:
+You can use the `./network.sh` script to stand up a simple Fabric test network. The test network has two peer organizations with one peer each and a single node raft ordering service. You can also use the `./network.sh` script to create channels and deploy chaincode. For more information, see [Using the Fabric test network](https://hyperledger-fabric.readthedocs.io/en/latest/test_network.html). The test network is being introduced in Fabric v2.0 as the long term replacement for the `first-network` sample.
 
+If you are planning to run the test network with consensus type BFT then please pass `-bft` flag as input to the `network.sh` script when creating the channel. This sample also supports the use of consensus type BFT and CA together.
+That is to create a network use:
+```bash
+./network.sh up -bft
 ```
-recordID, patientID, fileCID, fileHash, doctorName, description, timestamp, accessList, revoked
-```
 
-## What changed from the previous version
-
-| Old field (didn't match your chaincode) | New field (matches your chaincode) |
-|---|---|
-| `patientDID` | `patientID` |
-| `ipfsCID` | `fileCID` |
-| `reportType` | `description` |
-| `createdBy` | `doctorName` |
-| channel `medchannel` | channel `mychannel` |
-| chaincode `medchain` | chaincode `medical` |
-
-## Two modes — switchable from the login screen
-
-**Demo mode** (default) — works immediately, no backend needed. Uses realistic seed data so you can click through all 4 dashboards and see every screen.
-
-**Live mode** — click the mode toggle on the login screen. Connects to your real `medchain-backend-updated` Express server:
-- Real JWT login (`POST /api/auth/login`)
-- Real chaincode calls (`CreateRecord`, `GrantAccess`, `RequestRecordAccess`, etc.)
-- Real-time WebSocket updates when a Fabric transaction confirms (no polling)
-- Falls back to demo mode automatically if the backend is unreachable, with a toast explaining why
-
-## The four dashboards
-
-### Patient Portal
-Dashboard (record count, identity card), My Records (full detail view with access list and on-chain history), Access Control (grant/revoke access to doctors, labs, or insurance companies by patientID/MSP), Audit Trail (every access attempt ever logged against their records).
-
-### Doctor Portal
-Dashboard (records created, patient count), Create Record (the actual `CreateRecord` form with all 6 fields your chaincode expects), Patients (roster with per-patient record counts), My Records (everything this doctor has created).
-
-### Hospital / Lab Portal
-Dashboard (results uploaded, patients served), Upload Result (two-step flow: real file upload → AES-256 encrypt → IPFS via your backend's `/api/ipfs/upload`, then register the returned `fileCID`+`fileHash` on-chain), My Reports.
-
-### Insurance Company Portal
-Dashboard (grant/deny statistics), Verify Record (calls the audited `RequestRecordAccess` — the function that creates a permanent on-chain log regardless of outcome, which is what makes a denial or approval legally defensible), Request History.
-
-## Quick start
+To create a channel use:
 
 ```bash
-npm install
-npm run dev
-# http://localhost:3000 — demo mode works out of the box
+./network.sh createChannel -bft
 ```
 
-## Going live
+To restart a running network use:
 
-1. Start your Fabric network and deploy chaincode (you already know this part — `mychannel` / `medical`).
-2. Start Redis: `docker run -d -p 6379:6379 redis:7-alpine`
-3. Start the backend:
-   ```bash
-   cd medchain-backend-updated
-   npm install
-   node --env-file=.env server.js
-   ```
-4. Back here, refresh the browser and click the mode toggle on the login screen — it switches to **Live Mode**.
-5. Log in as any role (password `medchain2025` for all demo accounts) — this now hits your real backend and your real Hyperledger Fabric network.
-
-## File upload → IPFS → blockchain flow (Lab portal)
-
-This is the one screen where demo and live mode behave differently:
-- **Demo mode**: clicking "Encrypt → Upload to IPFS" simulates a CID/hash instantly.
-- **Live mode**: selecting a real file and clicking the same button sends it to `POST /api/ipfs/upload`, which AES-256 encrypts it, pins it to IPFS via Pinata, and returns the real `fileCID` + `fileHash` — which then go straight into `CreateRecord`.
-
-## Project structure
-
+```bash
+./network.sh restart -bft
 ```
-src/
-├── App.jsx                   ← routing, demo/live toggle, WebSocket, all 4 role state
-├── api/fabricService.js      ← every backend call, field names match your chaincode
-├── constants/theme.js        ← colors, role definitions, nav config
-├── components/index.jsx      ← Card, Badge, Btn, Stat, Table, TxModal, Toast
-└── pages/
-    ├── patient/   Dashboard · Records · Access Control · Audit Trail
-    ├── doctor/    Dashboard · Create Record · Patients · My Records
-    ├── lab/       Dashboard · Upload Result · My Reports
-    └── insurance/ Dashboard · Verify Record (+ shared AuditTrail from patient/)
+
+Note that running the createChannel command will start the network, if it is not already running.
+
+Before you can deploy the test network, you need to follow the instructions to [Install the Samples, Binaries and Docker Images](https://hyperledger-fabric.readthedocs.io/en/latest/install.html) in the Hyperledger Fabric documentation.
+
+## Using the Peer commands
+
+The `setOrgEnv.sh` script can be used to set up the environment variables for the organizations, this will help to be able to use the `peer` commands directly.
+
+First, ensure that the peer binaries are on your path, and the Fabric Config path is set assuming that you're in the `test-network` directory.
+
+```bash
+ export PATH=$PATH:$(realpath ../bin)
+ export FABRIC_CFG_PATH=$(realpath ../config)
 ```
+
+You can then set up the environment variables for each organization. The `./setOrgEnv.sh` command is designed to be run as follows.
+
+```bash
+export $(./setOrgEnv.sh Org2 | xargs)
+```
+
+(Note bash v4 is required for the scripts.)
+
+You will now be able to run the `peer` commands in the context of Org2. If a different command prompt, you can run the same command with Org1 instead.
+The `setOrgEnv` script outputs a series of `<name>=<value>` strings. These can then be fed into the export command for your current shell.
+
+## Chaincode-as-a-service
+
+To learn more about how to use the improvements to the Chaincode-as-a-service please see this [tutorial](./test-network/../CHAINCODE_AS_A_SERVICE_TUTORIAL.md). It is expected that this will move to augment the tutorial in the [Hyperledger Fabric ReadTheDocs](https://hyperledger-fabric.readthedocs.io/en/release-2.4/cc_service.html)
+
+
+## Podman
+
+*Note - podman support should be considered experimental but the following has been reported to work with podman 4.1.1 on Mac. If you wish to use podman a LinuxVM is recommended.*
+
+Fabric's `install-fabric.sh` script has been enhanced to support using `podman` to pull down images and tag them rather than docker. The images are the same, just pulled differently. Simply specify the 'podman' argument when running the `install-fabric.sh` script. 
+
+Similarly, the `network.sh` script has been enhanced so that it can use `podman` and `podman-compose` instead of docker. Just set the environment variable `CONTAINER_CLI` to `podman` before running the `network.sh` script:
+
+```bash
+CONTAINER_CLI=podman ./network.sh up
+````
+
+As there is no Docker-Daemon when using podman, only the `./network.sh deployCCAAS` command will work. Following the Chaincode-as-a-service Tutorial above should work. 
+
+
