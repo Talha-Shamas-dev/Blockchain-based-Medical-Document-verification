@@ -1,0 +1,11 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #060B18; color: #EEF2FF; }
+.card { background: rgba(255,255,255,0.04); border: 0.5px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1.25rem; }
+.badge { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
+.btn { padding: 0.4rem 0.9rem; border-radius: 6px; border: none; font-weight: 500; cursor: pointer; background: rgba(255,255,255,0.08); color: #EEF2FF; }
+.btn-primary { background: #00C8E8; color: #060B18; }
+.stat { display: flex; flex-direction: column; gap: 0.2rem; }
+.input, .select { background: rgba(255,255,255,0.06); border: 0.5px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0.4rem 0.6rem; color: #EEF2FF; width: 100%; }
+.table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.table th { text-align: left; padding: 0.4rem; border-bottom: 0.5px solid rgba(255,255,255,0.08); color: rgba(238,242,255,0.55); }
+.table td { padding: 0.4rem; border-bottom: 0.5px solid rgba(255,255,255,0.04); }

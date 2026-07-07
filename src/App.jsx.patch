@@ -1,0 +1,5 @@
+    insurance: {
+      dashboard: <InsuranceDashboard audit={audit} darkMode={darkMode} records={records} />,
+      verify: <VerifyRecord records={records} onVerify={handleVerify} loading={loading} darkMode={darkMode} />,
+      history: <AuditTrail audit={audit} title="Verification History" />,
+    },

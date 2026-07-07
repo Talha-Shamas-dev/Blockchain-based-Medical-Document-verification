@@ -1,0 +1,111 @@
+// ── VerifyRecord: Search by Patient ID ──────────────────
+export const VerifyRecord = ({ records = [], onVerify, loading, darkMode = true, onToggleVerify }) => {
+  const [patientID, setPatientID] = useState('')
+  const [patientData, setPatientData] = useState(null)
+  const [error, setError] = useState(null)
+
+  const textColor = darkMode ? '#EEF2FF' : '#1A1F36'
+  const secColor = darkMode ? 'rgba(238,242,255,0.65)' : '#555'
+  const borderColor = darkMode ? 'rgba(255,255,255,0.08)' : '#E0E4F0'
+  const bgInput = darkMode ? 'rgba(255,255,255,0.06)' : '#FFFFFF'
+  const cardBg = darkMode ? 'rgba(255,255,255,0.04)' : '#FFFFFF'
+
+  const handleSearch = () => {
+    if (!patientID.trim()) {
+      setError('Please enter a Patient ID')
+      setPatientData(null)
+      return
+    }
+    const patientRecords = records.filter(r => r.patientID === patientID && !r.revoked)
+    if (patientRecords.length === 0) {
+      setError(`No records found for patient ${patientID}`)
+      setPatientData(null)
+    } else {
+      setError(null)
+      const name = patientRecords[0]?.patientName || patientID
+      const totalCost = patientRecords.reduce((sum, r) => sum + (r.totalCost || 0), 0)
+      setPatientData({ patientID, name, records: patientRecords, totalCost })
+    }
+  }
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 24, marginBottom: '1.5rem', color: textColor }}>Verify Medical Records by Patient</h2>
+      <Card style={{ maxWidth: 950, background: cardBg, borderColor }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
+          <Input 
+            placeholder="Enter Patient ID (e.g., P001) and press Enter" 
+            value={patientID} 
+            onChange={e => setPatientID(e.target.value)}
+            style={{ flex: 1, padding: '0.6rem 0.8rem', fontSize: 14, color: textColor, background: bgInput, borderColor }}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+          />
+          <Btn onClick={handleSearch} disabled={loading} style={{ padding: '0.6rem 1.5rem' }}>{loading ? '⏳...' : '🔍 Search'}</Btn>
+        </div>
+
+        {error && <div style={{ color: C.red, marginTop: '0.5rem' }}>❌ {error}</div>}
+
+        {patientData && (
+          <div style={{ marginTop: '1rem' }}>
+            <h3 style={{ fontSize: 18, marginBottom: '0.5rem', color: C.teal }}>📋 Patient: {patientData.name} ({patientData.patientID})</h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1rem', marginBottom: '1rem' }}>
+              <Stat label="Total Claims" value={patientData.records.length} />
+              <Stat label="Total Cost" value={'$' + patientData.totalCost} />
+              <Stat label="Verified" value={patientData.records.filter(r => r.verificationStatus === 'verified').length} />
+              <Stat label="Pending" value={patientData.records.filter(r => r.verificationStatus === 'pending').length} />
+            </div>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: `0.5px solid ${borderColor}` }}>
+                  <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontSize: 12, color: secColor }}>Record ID</th>
+                  <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontSize: 12, color: secColor }}>Description</th>
+                  <th style={{ padding: '0.4rem 0.6rem', textAlign: 'right', fontSize: 12, color: secColor }}>Total</th>
+                  <th style={{ padding: '0.4rem 0.6rem', textAlign: 'center', fontSize: 12, color: secColor }}>Date</th>
+                  <th style={{ padding: '0.4rem 0.6rem', textAlign: 'center', fontSize: 12, color: secColor }}>Status</th>
+                  <th style={{ padding: '0.4rem 0.6rem', textAlign: 'center', fontSize: 12, color: secColor }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {patientData.records.map(r => (
+                  <tr key={r.recordID} style={{ borderBottom: `0.5px solid ${borderColor}20` }}>
+                    <td style={{ padding: '0.4rem 0.6rem', fontSize: 13, fontFamily: 'monospace', color: textColor }}>{short(r.recordID, 6)}</td>
+                    <td style={{ padding: '0.4rem 0.6rem', fontSize: 13, color: textColor }}>{r.description}</td>
+                    <td style={{ padding: '0.4rem 0.6rem', fontSize: 13, textAlign: 'right', color: C.gold }}>${r.totalCost || 0}</td>
+                    <td style={{ padding: '0.4rem 0.6rem', fontSize: 13, textAlign: 'center', color: secColor }}>{fmtD(r.timestamp)}</td>
+                    <td style={{ padding: '0.4rem 0.6rem', textAlign: 'center' }}>
+                      {r.verificationStatus === 'verified' && <Badge color={C.teal}>✅</Badge>}
+                      {r.verificationStatus === 'rejected' && <Badge color={C.red}>❌</Badge>}
+                      {r.verificationStatus === 'pending' && <Badge color={C.gold}>⏳</Badge>}
+                    </td>
+                    <td style={{ padding: '0.4rem 0.6rem', textAlign: 'center', minWidth: '180px' }}>
+                      {r.verificationStatus === 'pending' ? (
+                        <>
+                          <button 
+                            onClick={() => onToggleVerify(r.recordID, 'verify')} 
+                            style={{ background: `linear-gradient(135deg, ${C.teal}, ${C.cyan})`, border: 'none', borderRadius: 4, padding: '0.2rem 0.6rem', cursor: 'pointer', fontSize: 11, color: '#fff', marginRight: '0.2rem' }}
+                          >
+                            ✅ Verify
+                          </button>
+                          <button 
+                            onClick={() => onToggleVerify(r.recordID, 'reject')} 
+                            style={{ background: `linear-gradient(135deg, ${C.red}, ${C.pink})`, border: 'none', borderRadius: 4, padding: '0.2rem 0.6rem', cursor: 'pointer', fontSize: 11, color: '#fff' }}
+                          >
+                            ❌ Reject
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{ color: secColor, fontSize: 12 }}>—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}

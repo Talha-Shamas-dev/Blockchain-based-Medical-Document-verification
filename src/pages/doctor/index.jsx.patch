@@ -1,0 +1,131 @@
+// ── Doctor Dashboard ──────────────────────────────────────────
+export const DoctorDashboard = ({ records, role, darkMode = true }) => {
+  const myRecords = records.filter(r => r.doctorName === role.user)
+  const totalRecords = myRecords.length
+  const uniquePatients = [...new Set(myRecords.map(r => r.patientID))]
+  const totalPatients = uniquePatients.length
+  const totalFees = myRecords.reduce((sum, r) => sum + (r.totalCost || 0), 0)
+
+  const emergencyRecords = myRecords.filter(r => 
+    r.description?.toLowerCase().includes('emergency') || 
+    r.description?.toLowerCase().includes('urgent')
+  )
+  const emergencyCount = emergencyRecords.length
+
+  const latestRecords = [...myRecords].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 3)
+
+  const [appointments] = useState([
+    { id: 'A001', patient: 'Sarah Ali', time: '10:00 AM', type: 'Follow-up' },
+    { id: 'A002', patient: 'Omar Khan', time: '11:30 AM', type: 'Checkup' },
+    { id: 'A003', patient: 'Ahmed Hassan', time: '2:00 PM', type: 'Emergency' },
+  ])
+
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+
+  // ── Dynamic colors based on darkMode ──────────────────────────
+  const textColor = darkMode ? '#EEF2FF' : '#1A1F36'
+  const secColor = darkMode ? 'rgba(238,242,255,0.65)' : '#555'
+  const borderColor = darkMode ? 'rgba(255,255,255,0.08)' : '#E0E4F0'
+  const cardBg = darkMode ? 'rgba(255,255,255,0.04)' : '#FFFFFF'
+  const tableHeaderBg = darkMode ? 'rgba(255,255,255,0.04)' : '#F5F7FA'
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <div>
+          <h2 style={{ fontSize: 24, margin: 0, color: textColor }}>Doctor Dashboard</h2>
+          <p style={{ fontSize: 14, color: secColor, margin: '0.2rem 0 0' }}>
+            Welcome back, {role.user} • <span style={{ color: C.cyan }}>{today}</span>
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <Btn style={{ background: `linear-gradient(135deg, ${C.cyan}, ${C.blue})`, color: '#fff', border: 'none', padding: '0.4rem 1rem' }}>
+            📋 Create Record
+          </Btn>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+        <Stat label="Total Records" value={totalRecords} />
+        <Stat label="Patients Treated" value={totalPatients} />
+        <Stat label="Emergency Cases" value={emergencyCount} />
+        <Stat label="Total Fees" value={'$' + totalFees} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+        <Card style={{ background: cardBg, borderColor }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+            <h3 style={{ fontSize: 18, color: textColor, margin: 0 }}>📅 Today's Appointments</h3>
+            <Btn style={{ fontSize: 12, padding: '0.15rem 0.8rem', background: 'transparent', border: `0.5px solid ${borderColor}`, color: secColor }}>
+              View All
+            </Btn>
+          </div>
+          {appointments.length === 0 ? (
+            <div style={{ color: secColor, fontSize: 14 }}>No appointments for today</div>
+          ) : (
+            appointments.map((apt, idx) => (
+              <div key={apt.id} style={{ 
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                padding: '0.5rem 0', borderBottom: idx < appointments.length - 1 ? `0.5px solid ${borderColor}` : 'none' 
+              }}>
+                <div>
+                  <div style={{ fontWeight: 500, color: textColor }}>{apt.patient}</div>
+                  <div style={{ fontSize: 12, color: secColor }}>{apt.type} • {apt.time}</div>
+                </div>
+                <Badge color={apt.type === 'Emergency' ? C.red : C.cyan}>{apt.type}</Badge>
+              </div>
+            ))
+          )}
+        </Card>
+
+        <Card style={{ background: cardBg, borderColor }}>
+          <h3 style={{ fontSize: 18, color: textColor, margin: '0 0 0.8rem 0' }}>⚡ Quick Actions</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            <Btn style={{ background: `linear-gradient(135deg, ${C.cyan}, ${C.blue})`, color: '#fff', border: 'none', padding: '0.5rem', fontSize: 14, justifyContent: 'flex-start' }}>
+              ➕ Create New Record
+            </Btn>
+            <Btn style={{ background: `linear-gradient(135deg, ${C.teal}, ${C.cyan})`, color: '#fff', border: 'none', padding: '0.5rem', fontSize: 14, justifyContent: 'flex-start' }}>
+              👥 View All Patients
+            </Btn>
+            <Btn style={{ background: `linear-gradient(135deg, ${C.gold}, ${C.purple})`, color: '#fff', border: 'none', padding: '0.5rem', fontSize: 14, justifyContent: 'flex-start' }}>
+              🚑 Emergency Cases
+            </Btn>
+            <Btn style={{ background: `linear-gradient(135deg, ${C.pink}, ${C.red})`, color: '#fff', border: 'none', padding: '0.5rem', fontSize: 14, justifyContent: 'flex-start' }}>
+              ⏰ Edit Schedule
+            </Btn>
+          </div>
+        </Card>
+      </div>
+
+      <div style={{ marginTop: '1.5rem' }}>
+        <h3 style={{ fontSize: 18, color: textColor, marginBottom: '0.8rem' }}>📋 Recently Added Records</h3>
+        <Card style={{ background: cardBg, borderColor, overflow: 'hidden', padding: 0 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead style={{ background: tableHeaderBg }}>
+              <tr style={{ borderBottom: `0.5px solid ${borderColor}` }}>
+                <th style={{ padding: '0.6rem', textAlign: 'left', fontSize: 13, color: secColor }}>Patient</th>
+                <th style={{ padding: '0.6rem', textAlign: 'left', fontSize: 13, color: secColor }}>Description</th>
+                <th style={{ padding: '0.6rem', textAlign: 'right', fontSize: 13, color: secColor }}>Cost</th>
+                <th style={{ padding: '0.6rem', textAlign: 'center', fontSize: 13, color: secColor }}>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {latestRecords.length === 0 ? (
+                <tr><td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: secColor }}>No records yet</td></tr>
+              ) : (
+                latestRecords.map(r => (
+                  <tr key={r.recordID} style={{ borderBottom: `0.5px solid ${borderColor}40` }}>
+                    <td style={{ padding: '0.6rem', fontSize: 13, color: textColor }}>{r.patientName || r.patientID}</td>
+                    <td style={{ padding: '0.6rem', fontSize: 13, color: textColor }}>{r.description}</td>
+                    <td style={{ padding: '0.6rem', fontSize: 13, textAlign: 'right', color: C.gold }}>${r.totalCost || 0}</td>
+                    <td style={{ padding: '0.6rem', fontSize: 13, textAlign: 'center', color: secColor }}>{fmtD(r.timestamp)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </Card>
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,61 @@
+// ... (keep everything else the same, only replace PatientInsuranceClaims)
+
+// ── Insurance Claims ─────────────────────────────────────────────
+export const PatientInsuranceClaims = ({ records, role, onClaim, darkMode = true }) => {
+  const myRecords = records.filter(r => r.patientID === role.msp && !r.revoked)
+  const textColor = darkMode ? '#EEF2FF' : '#1A1F36'
+  const secColor = darkMode ? 'rgba(238,242,255,0.65)' : '#555'
+
+  const handleClaim = (recordID) => {
+    if (window.confirm(`Submit insurance claim for record ${recordID}? This will be sent to the insurance company for verification.`)) {
+      onClaim(recordID)
+      alert('Claim submitted successfully! You will be notified once it is verified.')
+    }
+  }
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 24, marginBottom: '1.5rem', color: textColor }}>Insurance Claims</h2>
+      {myRecords.length === 0 ? (
+        <Card><div style={{ color: secColor }}>No medical records found.</div></Card>
+      ) : (
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          {myRecords.map(r => (
+            <Card key={r.recordID} style={{ borderLeft: `3px solid ${r.verificationStatus === 'verified' ? C.teal : r.verificationStatus === 'rejected' ? C.red : C.gold}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: textColor }}>{r.description}</div>
+                  <div style={{ fontSize: 13, color: secColor }}>Record ID: {r.recordID}</div>
+                  <div style={{ fontSize: 13, color: secColor }}>Doctor: {r.doctorName}</div>
+                  <div style={{ fontSize: 13, color: secColor }}>Date: {fmtD(r.timestamp)}</div>
+                  <div style={{ fontSize: 13, color: secColor }}>Total Cost: <span style={{ color: C.gold, fontWeight: 600 }}>${r.totalCost || 0}</span></div>
+                  {r.claimSubmitted && (
+                    <div style={{ fontSize: 12, color: C.gold, marginTop: '0.2rem' }}>📤 Claim submitted on {fmtD(r.claimDate)}</div>
+                  )}
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ marginBottom: '0.3rem' }}>
+                    {r.verificationStatus === 'pending' && <Badge color={C.gold}>⏳ Pending</Badge>}
+                    {r.verificationStatus === 'verified' && <Badge color={C.teal}>✅ Verified</Badge>}
+                    {r.verificationStatus === 'rejected' && <Badge color={C.red}>❌ Rejected</Badge>}
+                  </div>
+                  {r.verificationStatus === 'pending' && !r.claimSubmitted && (
+                    <Btn onClick={() => handleClaim(r.recordID)} style={{ background: `linear-gradient(135deg, ${C.gold}, ${C.purple})`, color: '#fff', border: 'none', padding: '0.3rem 1rem', fontSize: 13, borderRadius: 6 }}>
+                      Submit Claim
+                    </Btn>
+                  )}
+                  {r.verificationStatus === 'verified' && (
+                    <div style={{ fontSize: 13, color: C.teal, fontWeight: 600 }}>✅ Approved</div>
+                  )}
+                  {r.verificationStatus === 'rejected' && (
+                    <div style={{ fontSize: 13, color: C.red, fontWeight: 600 }}>❌ Rejected</div>
+                  )}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
