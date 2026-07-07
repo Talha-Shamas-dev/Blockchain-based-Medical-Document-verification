@@ -1,68 +1,89 @@
-# Running the test network
+# 🏥 Blockchain-Based Medical Document Verification System
 
-You can use the `./network.sh` script to stand up a simple Fabric test network. The test network has two peer organizations with one peer each and a single node raft ordering service. You can also use the `./network.sh` script to create channels and deploy chaincode. For more information, see [Using the Fabric test network](https://hyperledger-fabric.readthedocs.io/en/latest/test_network.html). The test network is being introduced in Fabric v2.0 as the long term replacement for the `first-network` sample.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Fabric](https://img.shields.io/badge/Hyperledger_Fabric-2.5-blue)](https://hyperledger-fabric.readthedocs.io/)
+[![Node.js](https://img.shields.io/badge/Node.js-18.x-green)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/React-18.x-61DAFB)](https://reactjs.org/)
 
-If you are planning to run the test network with consensus type BFT then please pass `-bft` flag as input to the `network.sh` script when creating the channel. This sample also supports the use of consensus type BFT and CA together.
-That is to create a network use:
-```bash
-./network.sh up -bft
-```
+> **A decentralized ecosystem for secure, tamper-proof, and instant verification of medical documents using Hyperledger Fabric Blockchain and IPFS.**
 
-To create a channel use:
+---
 
-```bash
-./network.sh createChannel -bft
-```
+## 📋 Table of Contents
+- [🚀 Introduction](#-introduction)
+- [⚠️ Problem Statement](#️-problem-statement)
+- [💡 Solution & Features](#-solution--features)
+- [🏗️ System Architecture](#️-system-architecture)
+- [🔄 Data Flow Diagram](#-data-flow-diagram)
+- [👥 User Roles](#-user-roles)
+- [🛠️ Technology Stack](#️-technology-stack)
+- [📸 Screenshots](#-screenshots)
+- [⚙️ Local Setup (Installation)](#️-local-setup-installation)
+- [📁 Project Structure](#-project-structure)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
 
-To restart a running network use:
+---
 
-```bash
-./network.sh restart -bft
-```
+## 🚀 Introduction
 
-Note that running the createChannel command will start the network, if it is not already running.
+In the modern healthcare ecosystem, patients often struggle to manage their medical history across multiple hospitals, labs, and insurance providers. This project leverages **Hyperledger Fabric** (a permissioned blockchain) to create a single source of truth for medical documents.
 
-Before you can deploy the test network, you need to follow the instructions to [Install the Samples, Binaries and Docker Images](https://hyperledger-fabric.readthedocs.io/en/latest/install.html) in the Hyperledger Fabric documentation.
+By combining **Blockchain** (for immutability and access control) with **IPFS** (InterPlanetary File System for decentralized storage), we ensure that:
+- Medical records cannot be tampered with or forged.
+- Patients have absolute ownership and consent control over their data.
+- Verification (e.g., for insurance claims or new doctors) is reduced to seconds instead of days.
 
-## Using the Peer commands
+---
 
-The `setOrgEnv.sh` script can be used to set up the environment variables for the organizations, this will help to be able to use the `peer` commands directly.
+## ⚠️ Problem Statement
 
-First, ensure that the peer binaries are on your path, and the Fabric Config path is set assuming that you're in the `test-network` directory.
+**"Medical identity theft, record forgery, and fragmented patient data cost the global healthcare industry billions annually and risk patient lives."**
 
-```bash
- export PATH=$PATH:$(realpath ../bin)
- export FABRIC_CFG_PATH=$(realpath ../config)
-```
+Traditional systems suffer from:
+1.  **Centralized Vulnerabilities:** Single points of failure and hacking targets.
+2.  **Data Silos:** Hospitals, labs, and insurers do not share data seamlessly.
+3.  **Forgery:** Paper-based or simple digital documents are easily forged.
+4.  **Lack of Patient Ownership:** Patients rarely have access to or control over their own complete medical history.
+5.  **Inefficient Verification:** Insurance claim verifications take weeks due to manual cross-checking.
 
-You can then set up the environment variables for each organization. The `./setOrgEnv.sh` command is designed to be run as follows.
+---
 
-```bash
-export $(./setOrgEnv.sh Org2 | xargs)
-```
+## 💡 Solution & Features
 
-(Note bash v4 is required for the scripts.)
+### ✨ Key Features
+- **🔗 Immutable Records:** Once a document hash is stored on the Fabric ledger, it cannot be altered.
+- **🛡️ Access Control:** Smart contracts (Chaincode) enforce strict permissions—only authorized doctors/insurers can view specific records.
+- **📂 Decentralized Storage:** Documents are stored on IPFS; the blockchain only stores the hash (CID), ensuring GDPR compliance and scalability.
+- **⚡ Instant Verification:** Any stakeholder (e.g., insurance company) can verify the authenticity of a document in real-time.
+- **👤 Role-Based Dashboards:** Separate UIs for Patients, Doctors, Labs, and Insurance companies.
 
-You will now be able to run the `peer` commands in the context of Org2. If a different command prompt, you can run the same command with Org1 instead.
-The `setOrgEnv` script outputs a series of `<name>=<value>` strings. These can then be fed into the export command for your current shell.
+---
 
-## Chaincode-as-a-service
+## 🏗️ System Architecture
 
-To learn more about how to use the improvements to the Chaincode-as-a-service please see this [tutorial](./test-network/../CHAINCODE_AS_A_SERVICE_TUTORIAL.md). It is expected that this will move to augment the tutorial in the [Hyperledger Fabric ReadTheDocs](https://hyperledger-fabric.readthedocs.io/en/release-2.4/cc_service.html)
+Below is the high-level architecture showcasing how the Frontend, Backend, Fabric Network, and IPFS interact.
 
+```mermaid
+graph TD
+    User((User)) -->|Interacts| Frontend[React + Vite Frontend]
+    
+    subgraph Server
+        Frontend -->|REST API| Backend[Node.js + Express API]
+        Backend -->|SDK Calls| Fabric[Hyperledger Fabric Network]
+        Backend -->|Pinning| IPFS[IPFS Cluster]
+    end
 
-## Podman
+    subgraph Hyperledger Fabric Network (Permissioned)
+        Fabric -->|Commits| Ledger[(Distributed Ledger)]
+        Fabric -->|Invokes| Chaincode[Smart Contracts / Chaincode]
+    end
 
-*Note - podman support should be considered experimental but the following has been reported to work with podman 4.1.1 on Mac. If you wish to use podman a LinuxVM is recommended.*
+    subgraph Storage
+        IPFS -->|Stores| Documents[Medical PDFs / Reports]
+        Ledger -->|Stores Hashes| CIDs[(IPFS Hashes / CIDs)]
+    end
 
-Fabric's `install-fabric.sh` script has been enhanced to support using `podman` to pull down images and tag them rather than docker. The images are the same, just pulled differently. Simply specify the 'podman' argument when running the `install-fabric.sh` script. 
-
-Similarly, the `network.sh` script has been enhanced so that it can use `podman` and `podman-compose` instead of docker. Just set the environment variable `CONTAINER_CLI` to `podman` before running the `network.sh` script:
-
-```bash
-CONTAINER_CLI=podman ./network.sh up
-````
-
-As there is no Docker-Daemon when using podman, only the `./network.sh deployCCAAS` command will work. Following the Chaincode-as-a-service Tutorial above should work. 
-
-
+    style Fabric fill:#f9f,stroke:#333,stroke-width:2px
+    style Backend fill:#bbf,stroke:#333,stroke-width:2px
+    style Frontend fill:#bfb,stroke:#333,stroke-width:2px
